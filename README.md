@@ -54,14 +54,14 @@ Install `cli-primer` via `npm`, then require it in your Node.js application:
 npm i cli-primer
 ```
 ```javascript
-const cliKit = require('path/to/cli-primer');
+const primer = require('path/to/cli-primer');
 ```
 
 ### 2. Parse Command-Line Arguments
 
 Use `getArguments` to parse command-line arguments:
 ```javascript
-const args = cliKit.getArguments(dictionary, defaults, monitoringFn);
+const args = primer.getArguments(dictionary, defaults, monitoringFn);
 ```
 
 ### 3. Initialize a configuration file
@@ -75,7 +75,7 @@ const configTemplate = JSON.stringify({
         whateverElse: '{{other}}'
     }
 });
-cliKit.initializeConfig ('path/to/my/config.json', configTemplate, {
+primer.initializeConfig ('path/to/my/config.json', configTemplate, {
     appName: 'My app',
     appDesc: 'This is a test application',
     appAuthor: 'John Doe',
@@ -86,19 +86,19 @@ cliKit.initializeConfig ('path/to/my/config.json', configTemplate, {
 ### 4. Load and Parse a Configuration File
 Use `getConfigData` to load and parse a configuration file:
 ```javascript
-const config = cliKit.getConfigData(configFilePath, profileName, dictionary, monitoringFn);
+const config = primer.getConfigData(configFilePath, profileName, dictionary, monitoringFn);
 ```
 
 ### 5. Set Up Necessary Folders and Files
 Use `ensureSetup` to set up necessary folders and files:
 ```javascript
-cliKit.ensureSetup(homeDir, bluePrint, monitoringFn);
+primer.ensureSetup(homeDir, bluePrint, monitoringFn);
 ```
 
 ### 6. Clean Up a Folder
 Use `removeFolderContents` to clean up a folder:
 ```javascript
-await cliKit.removeFolderContents(folderPath, patterns, monitoringFn);
+await primer.removeFolderContents(folderPath, patterns, monitoringFn);
 ```
 
 ## Additional Notes

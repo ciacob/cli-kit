@@ -2,7 +2,7 @@
 
 A utility package for managing command-line arguments, generating help documentation, and handling configuration files in Node.js applications.
 
-> _Note_: This documentation is meant to give you a brief introduction. All the functions in this package's modules have extensive JSON documentation of their own. __Make sure to read that__ — you'll be up and running in no time.
+> _Note_: This documentation is meant to give you a brief introduction. All the functions in this package's modules have extensive JsDoc documentation of their own. __Make sure to read that__ — you'll be up and running in no time.
 
 ## Core Features
 

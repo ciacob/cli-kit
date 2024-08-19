@@ -1,6 +1,6 @@
 {
   "name": "cli-primer",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A utility package for managing command-line arguments, generating help documentation, and handling configuration files in Node.js applications.",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ciacob/cli-kit.git"
+    "url": "git+https://github.com/ciacob/cli-primer.git"
   },
   "keywords": [
     "cli",
@@ -19,7 +19,7 @@
   "author": "Claudius Iacob <claudius.iacob@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ciacob/cli-kit/issues"
+    "url": "https://github.com/ciacob/cli-primer/issues"
   },
-  "homepage": "https://github.com/ciacob/cli-kit#readme"
+  "homepage": "https://github.com/ciacob/cli-primer/#readme"
 }

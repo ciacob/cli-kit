@@ -1,0 +1,25 @@
+{
+  "name": "cli-kit",
+  "version": "1.0.0",
+  "description": "A utility package for managing command-line arguments, generating help documentation, and handling configuration files in Node.js applications.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ciacob/cli-kit.git"
+  },
+  "keywords": [
+    "cli",
+    "arguments",
+    "help",
+    "configuration"
+  ],
+  "author": "Claudius Iacob <claudius.iacob@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ciacob/cli-kit/issues"
+  },
+  "homepage": "https://github.com/ciacob/cli-kit#readme"
+}

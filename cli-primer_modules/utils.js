@@ -4,6 +4,157 @@ const fsp = require("fs").promises;
 const path = require("path");
 const glob = require("glob");
 
+let _showDebug = false;
+
+/**
+ * Simple monitoring function. Prints to console and returns a Boolean indicating
+ * whether received data appears to denote an error.
+ *
+ * @param   {Object} info
+ *          Object containing the following keys:
+ *          - `type` (String): The type of message (`info`, `warn`, `error`, `debug`).
+ *          - `message` (String): The message content to be displayed.
+ *          - `data` (Object, optional): Additional data related to the message, displayed as an object.
+ *
+ * @returns {Boolean}
+ *          Returns `true` if `info.type` is `"error"`, indicating an error occurred.
+ *          Returns `false` otherwise.
+ */
+const monitoringFn = (info) => {
+  if (!info || typeof info !== "object") {
+    console.error("[ERROR] Invalid info object provided to `monitoringFn`.");
+    return true;
+  }
+
+  const { type = "", message = "", data = "" } = info;
+  const normalizedType = ("" + type).trim().toLowerCase();
+
+  // Only show debug messages when `_showDebug` is `true`.
+  const isDebug = normalizedType === "debug";
+  if (isDebug && !_showDebug) {
+    return false;
+  }
+
+  const isError = normalizedType === "error";
+  console.log(`[${normalizedType.toUpperCase()}] ${message}`, data || "");
+  return isError;
+};
+
+/**
+ * Enables or disables the display of `debug` messages by the `monitoringFn`.
+ *
+ * @param {Boolean} value
+ *          Set to `true` to include `debug` messages in the output of the `monitoringFn`.
+ *          Set to `false` to exclude them.
+ *
+ * @returns {void}
+ */
+function setDebugMode(value) {
+  _showDebug = !!value;
+}
+
+/**
+ * Reads the `package.json` file of the current Node.js application and returns an object
+ * containing basic application information.
+ *
+ * @param {Function} [monitoringFn=null]
+ *        Optional function to receive real-time monitoring information.
+ *        Expected signature/arguments structure is: onMonitoringInfo
+ *        ({type:"info|warn|error", message:"<any>"[, data : {}]});
+ *
+ * @returns {Object}
+ *          An object containing the following properties:
+ *          - `name` (String): The name of the application. Defaults to `"Unknown app"`
+ *             if missing.
+ *          - `author` (String): The author of the application. Defaults to an empty
+ *             string if missing.
+ *          - `version` (String): The version of the application. Defaults to an
+ *             empty string if missing.
+ *          - `description` (String): The description of the application. Defaults
+ *             to an empty string if missing.
+ */
+function getAppInfo(monitoringFn = null) {
+  const $m = monitoringFn || function () {};
+
+  const packageJsonPath = path.resolve(process.cwd(), "package.json");
+  let appInfo = {
+    name: "Unknown app",
+    author: "",
+    version: "",
+    description: "",
+  };
+
+  try {
+    if (fs.existsSync(packageJsonPath)) {
+      const packageData = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+
+      appInfo.name = packageData.name || appInfo.name;
+      appInfo.author = packageData.author || appInfo.author;
+      appInfo.version = packageData.version || appInfo.version;
+      appInfo.description = packageData.description || appInfo.description;
+
+      $m({
+        type: "debug",
+        message: `Successfully read package.json from path: ${packageJsonPath}`,
+        data: appInfo,
+      });
+    } else {
+      $m({
+        type: "warn",
+        message: `package.json not found at path: ${packageJsonPath}`,
+      });
+    }
+  } catch (error) {
+    $m({
+      type: "warn",
+      message: `Failed to read package.json. Details: ${error.message}`,
+      data: { error },
+    });
+  }
+
+  return appInfo;
+}
+
+/**
+ * Generates a default application banner based on the provided appInfo object.
+ * If the appInfo object is missing or an error occurs while accessing its properties,
+ * the function returns a string containing only three dashes ("---").
+ *
+ * @param {Object} appInfo
+ *        The object containing application information. Typically returned by
+ *        `getAppInfo()`.
+ *        Should contain the following properties:
+ *        - `name` (String): The name of the application.
+ *        - `author` (String): The author of the application.
+ *        - `version` (String): The version of the application.
+ *        - `description` (String): The description of the application.
+ *
+ * @returns {String}
+ *          The generated application banner or a string containing three dashes ("---")
+ *          in case of an error.
+ */
+function getDefaultBanner(appInfo) {
+  try {
+    if (!appInfo) throw new Error("Invalid appInfo object");
+    const { name, version, author, description } = appInfo;
+    let banner = `${name}`;
+    if (version) {
+      banner += ` ${version}`;
+    }
+    if (author) {
+      banner += `\nby ${author}`;
+    }
+    if (description) {
+      banner += `\n${description}`;
+    }
+    banner += `\n---`;
+    return banner;
+  } catch (error) {
+    // Return a string containing three dashes if an error occurs
+    return "---";
+  }
+}
+
 /**
  * Ensures a specific folder structure exists and populates it with files based on templates.
  * @param {String} homeDir
@@ -174,15 +325,15 @@ async function removeFolderContents(
  * Populates a template with data.
  * @param   {String} template
  *          The template string with placeholders.
- * 
+ *
  * @param   {Object} data
  *          The data object with key-value pairs for placeholders.
- * 
+ *
  * @param   {Function} [monitoringFn=null]
  *          Optional function to receive real-time monitoring information.
  *          Expected signature/arguments structure is:
  *          onMonitoringInfo ({type:"info|warn|error", message:"<any>"[, data : {}]});
- * 
+ *
  * @return  {String}
  *          The populated template.
  */
@@ -203,7 +354,7 @@ function populateTemplate(template, data, monitoringFn = null) {
 }
 
 /**
- * Merges three data sets, giving precedence to the later sets. 
+ * Merges three data sets, giving precedence to the later sets.
  * Performs a shallow merge.
  * @param {Object} implicit - The implicit data set.
  * @param {Object} explicit - The explicit data set.
@@ -219,4 +370,8 @@ module.exports = {
   populateTemplate,
   mergeData,
   removeFolderContents,
+  monitoringFn,
+  setDebugMode,
+  getAppInfo,
+  getDefaultBanner
 };

@@ -12,6 +12,7 @@ A utility package for managing command-line arguments, generating help documenta
   - **Initialization**: Code that initializes a configuration file based on a template.
   - **Loading Configuration**: Code that loads and merges configuration data from a file with command-line arguments and default values.
 - **File System Utilities**: Helpers to manage directory structures and file content, including cleanup operations.
+- **Monitoring and Debugging**: Built-in monitoring function with optional debug mode and application information retrieval.
 
 ## Modules
 
@@ -45,6 +46,18 @@ A utility package for managing command-line arguments, generating help documenta
 - **`mergeData(implicit, explicit, given)`**: 
   Merges three data sets, giving precedence to the later sets.
 
+- **`monitoringFn(info)`**:
+  A simple monitoring function that prints to the console and returns a Boolean indicating whether the received data denotes an error. It supports enabling or disabling debug messages.
+
+- **`setDebugMode(value)`**:
+  Toggles the display of `debug` messages by the `monitoringFn`.
+
+- **`getAppInfo(monitoringFn)`**:
+  Reads the `package.json` file of the current Node.js application and returns an object with `name`, `author`, `version`, and `description`.
+
+- **`getDefaultBanner(appInfo)`**:
+  Generates a default application banner based on the provided `appInfo` object, with minimal error handling.
+
 ## How to Use
 
 ### 1. Install the Package
@@ -54,7 +67,7 @@ Install `cli-primer` via `npm`, then require it in your Node.js application:
 npm i cli-primer
 ```
 ```javascript
-const primer = require('path/to/cli-primer');
+const primer = require('cli-primer');
 ```
 
 ### 2. Parse Command-Line Arguments
@@ -99,6 +112,25 @@ primer.ensureSetup(homeDir, bluePrint, monitoringFn);
 Use `removeFolderContents` to clean up a folder:
 ```javascript
 await primer.removeFolderContents(folderPath, patterns, monitoringFn);
+```
+
+### 7. Toggle Debug Mode
+Use `setDebugMode` to enable or disable debug messages in the default `monitoringFn` (accessible as `primer.monitoringFn`):
+```javascript
+primer.setDebugMode(true); // Enable debug messages
+```
+
+### 8. Get Application Information
+Use `getAppInfo` to retrieve application information from `package.json`:
+```javascript
+const appInfo = primer.getAppInfo(monitoringFn);
+```
+
+### 9. Generate a Default Application Banner
+Use `getDefaultBanner to generate an application banner:
+```javascript
+const banner = primer.getDefaultBanner(appInfo);
+console.log(banner);
 ```
 
 ## Additional Notes

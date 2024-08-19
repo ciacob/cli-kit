@@ -1,9 +1,9 @@
 // index.js
 
-// Requiring all the modules from cli-kit_modules
-const argTools = require("./cli-kit_modules/argTools");
-const configTools = require("./cli-kit_modules/configTools");
-const utils = require("./cli-kit_modules/utils");
+// Requiring all the modules from cli-primer_modules
+const argTools = require("./cli-primer_modules/argTools");
+const configTools = require("./cli-primer_modules/configTools");
+const utils = require("./cli-primer_modules/utils");
 
 // Re-exporting all the functions for convenient access
 module.exports = {
@@ -13,7 +13,7 @@ module.exports = {
 };
 
 /**
- * cli-kit: A Node.js utility toolkit for building and managing command-line applications.
+ * cli-primer: A Node.js utility toolkit for building and managing command-line applications.
  * 
  * This package provides a set of tools to help you quickly set up and control the behavior
  * of your CLI applications. It includes functions for argument parsing, configuration file
@@ -45,7 +45,7 @@ module.exports = {
  * -----------
  * 1. Install the package and require it in your Node.js application:
  *    ```javascript
- *    const cliKit = require('path/to/cli-kit');
+ *    const cliKit = require('path/to/cli-primer');
  *    ```
  * 
  * 2. Use `getArguments` to parse command-line arguments:
@@ -70,6 +70,6 @@ module.exports = {
  * 
  * This package is designed to help you streamline the process of building CLI applications by providing
  * reusable functions that handle common tasks. Whether you're building a small script or a complex application,
- * cli-kit can save you time and effort.
+ * cli-primer can save you time and effort.
  */
 

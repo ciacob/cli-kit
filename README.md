@@ -1,4 +1,4 @@
-# cli-kit
+# cli-primer
 
 A utility package for managing command-line arguments, generating help documentation, and handling configuration files in Node.js applications.
 
@@ -49,12 +49,12 @@ A utility package for managing command-line arguments, generating help documenta
 
 ### 1. Install the Package
 
-Install `cli-kit` via `npm`, then require it in your Node.js application:
+Install `cli-primer` via `npm`, then require it in your Node.js application:
 ```bash
-npm install cli-kit
+npm i cli-primer
 ```
 ```javascript
-const cliKit = require('path/to/cli-kit');
+const cliKit = require('path/to/cli-primer');
 ```
 
 ### 2. Parse Command-Line Arguments
@@ -102,7 +102,7 @@ await cliKit.removeFolderContents(folderPath, patterns, monitoringFn);
 ```
 
 ## Additional Notes
-This package is designed to help you streamline the process of building CLI applications by providing reusable functions that handle common tasks. Whether you're building a small script or a complex application, `cli-kit` can save you time and effort.
+This package is designed to help you streamline the process of building CLI applications by providing reusable functions that handle common tasks. Whether you're building a small script or a complex application, `cli-primer` can save you time and effort.
 
 ### Example Use Cases
 * __Argument Parsing and Validation__: Handle command-line arguments with built-in validation, default values, and help documentation generation.
@@ -112,4 +112,4 @@ This package is designed to help you streamline the process of building CLI appl
 * __File Management__: Ensure directory structures are in place and manage content within folders easily.
 
 ### Contribution and Development
-Feel free to contribute to cli-kit by submitting issues or pull requests. The goal is to keep this toolkit simple yet powerful for CLI app development.
+Feel free to contribute to cli-primer by submitting issues or pull requests. The goal is to keep this toolkit simple yet powerful for CLI app development.

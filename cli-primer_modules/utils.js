@@ -3,6 +3,7 @@ const fs = require("fs");
 const fsp = require("fs").promises;
 const path = require("path");
 const glob = require("glob");
+const os = require("os");
 
 let _showDebug = false;
 
@@ -54,44 +55,95 @@ function setDebugMode(value) {
 }
 
 /**
+ * Returns the path of the user's home directory based on the current OS.
+ * @return {String} The path to the user's home directory.
+ */
+function getUserHomeDirectory() {
+  return os.homedir();
+}
+
+/**
+ *
+ * @returns Returns true if application currently runs on Windows.
+ */
+function isWindows() {
+  return os.platform() === "win32";
+}
+
+/**
+ * Generates a unique identifier string, e.g., "a65c513".
+ * @returns {String} A unique identifier.
+ */
+function generateUniqueId() {
+  return Math.random().toString(36).substring(2, 8);
+}
+
+/**
+ * Generates a path-safe version of the application name.
+ * If the resulting name is not valid, it generates a unique name instead.
+ *
+ * @param {String} name - The application name to sanitize.
+ * @returns {String} A sanitized, path-safe name.
+ */
+function generatePathSafeName(name) {
+  let sanitized = name
+    .replace(/[^a-zA-Z0-9]/g, "-") // Replace non-alphanumeric chars with dashes
+    .replace(/-+/g, "-") // Reduce multiple dashes to one
+    .replace(/^-|-$/g, "") // Remove leading and trailing dashes
+    .toLowerCase(); // Convert to lowercase
+
+  if (!/^[a-z0-9].*[a-z0-9]$/.test(sanitized)) {
+    // Generate a unique name if the sanitized name is invalid
+    sanitized = `app-${generateUniqueId()}`;
+  }
+
+  return sanitized;
+}
+
+/**
  * Reads the `package.json` file of the current Node.js application and returns an object
  * containing basic application information.
  *
  * @param {Function} [monitoringFn=null]
  *        Optional function to receive real-time monitoring information.
  *        Expected signature/arguments structure is: onMonitoringInfo
- *        ({type:"info|warn|error", message:"<any>"[, data : {}]});
+ *        ({type:"info|warn|error|debug", message:"<any>"[, data : {}]});
  *
  * @returns {Object}
  *          An object containing the following properties:
- *          - `name` (String): The name of the application. Defaults to `"Unknown app"`
- *             if missing.
- *          - `author` (String): The author of the application. Defaults to an empty
- *             string if missing.
- *          - `version` (String): The version of the application. Defaults to an
- *             empty string if missing.
- *          - `description` (String): The description of the application. Defaults
- *             to an empty string if missing.
+ *          - `name` (String): The name of the application. Defaults to a unique
+ *             name like "App a65c513" if missing.
+ *          - `appPathName` (String): A sanitized version of the application name
+ *             suitable for use in paths.
+ *          - Optional properties:
+ *             - `author` (String): The author of the application.
+ *             - `version` (String): The version of the application.
+ *             - `description` (String): The description of the application.
  */
 function getAppInfo(monitoringFn = null) {
   const $m = monitoringFn || function () {};
 
   const packageJsonPath = path.resolve(process.cwd(), "package.json");
   let appInfo = {
-    name: "Unknown app",
-    author: "",
-    version: "",
-    description: "",
+    name: `App ${generateUniqueId()}`,
   };
 
   try {
     if (fs.existsSync(packageJsonPath)) {
       const packageData = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
-      appInfo.name = packageData.name || appInfo.name;
-      appInfo.author = packageData.author || appInfo.author;
-      appInfo.version = packageData.version || appInfo.version;
-      appInfo.description = packageData.description || appInfo.description;
+      if (packageData.name) {
+        appInfo.name = packageData.name;
+      }
+      if (packageData.author) {
+        appInfo.author = packageData.author;
+      }
+      if (packageData.version) {
+        appInfo.version = packageData.version;
+      }
+      if (packageData.description) {
+        appInfo.description = packageData.description;
+      }
 
       $m({
         type: "debug",
@@ -111,6 +163,9 @@ function getAppInfo(monitoringFn = null) {
       data: { error },
     });
   }
+
+  // Generate appPathName based on the name
+  appInfo.appPathName = generatePathSafeName(appInfo.name);
 
   return appInfo;
 }
@@ -181,7 +236,7 @@ function getDefaultBanner(appInfo) {
  * @param {Function} [monitoringFn=null]
  *        Optional function to receive real-time monitoring information.
  *        Expected signature/arguments structure is: onMonitoringInfo
- *        ({type:"info|warn|error", message:"<any>"[, data : {}]});
+ *        ({type:"info|warn|error|debug", message:"<any>"[, data : {}]});
  *
  * @returns {String[]}
  *          Returns an Array of Strings, one String for each path that was created.
@@ -251,7 +306,7 @@ function ensureSetup(homeDir, bluePrint, monitoringFn = null) {
  * @param   {Function} [monitoringFn=null]
  *          Optional function to receive real-time monitoring information.
  *          Expected signature/arguments structure is:
- *          onMonitoringInfo ({type:"info|warn|error", message:"<any>"[, data : {}]});
+ *          onMonitoringInfo ({type:"info|warn|error|debug", message:"<any>"[, data : {}]});
  *
  * @returns {String[]}
  *          Returns an Array of Strings, one String for each path that was
@@ -332,7 +387,7 @@ async function removeFolderContents(
  * @param   {Function} [monitoringFn=null]
  *          Optional function to receive real-time monitoring information.
  *          Expected signature/arguments structure is:
- *          onMonitoringInfo ({type:"info|warn|error", message:"<any>"[, data : {}]});
+ *          onMonitoringInfo ({type:"info|warn|error|debug", message:"<any>"[, data : {}]});
  *
  * @return  {String}
  *          The populated template.
@@ -365,13 +420,56 @@ function mergeData(implicit, explicit, given) {
   return { ...implicit, ...explicit, ...given };
 }
 
+/**
+ * Recursively merges two data sets, giving precedence to the later set (`setB`).
+ * Performs a deep merge, combining nested objects rather than just replacing them.
+ *
+ * NOTE: this function does a shallow merge for non-Objects. If the key in `setB`
+ * does not point to an Object (or if it points to an Array), the value from `setB`
+ * overwrites the value in `setA`.
+ *
+ * @param   {Object} setA
+ *          The first data set.
+ *
+ * @param   {Object} setB
+ *          The second data set, whose values will overwrite those in setA where
+ *          conflicts arise.
+ *
+ * @return  {Object}
+ *          The deeply merged data set.
+ */
+function deepMergeData(setA, setB) {
+  const result = { ...setA };
+
+  for (const key in setB) {
+    if (setB.hasOwnProperty(key)) {
+      if (
+        typeof setB[key] === "object" &&
+        setB[key] !== null &&
+        !Array.isArray(setB[key]) &&
+        typeof setA[key] === "object" &&
+        setA[key] !== null &&
+        !Array.isArray(setA[key])
+      ) {
+        result[key] = deepMergeData(setA[key], setB[key]);
+      } else {
+        result[key] = setB[key];
+      }
+    }
+  }
+  return result;
+}
+
 module.exports = {
   ensureSetup,
   populateTemplate,
   mergeData,
+  deepMergeData,
   removeFolderContents,
   monitoringFn,
   setDebugMode,
   getAppInfo,
-  getDefaultBanner
+  getDefaultBanner,
+  getUserHomeDirectory,
+  isWindows,
 };

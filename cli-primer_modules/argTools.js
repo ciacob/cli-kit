@@ -35,7 +35,7 @@
  * @param   {Function} [monitoringFn=null]
  *          Optional function to receive real-time monitoring information.
  *          Expected signature/arguments structure is: onMonitoringInfo
- *          ({type:"info|warn|error", message:"<any>"[, data : {}]});
+ *          ({type:"info|warn|error|debug", message:"<any>"[, data : {}]});
  *
  * @return  {Object} Key-value pairs of provided or default arguments.
  *          Returns `null` for an unmatched argument, in which case the client code should
@@ -90,7 +90,7 @@ function getArguments(dictionary, defaults = {}, monitoringFn = null) {
  * @param {Function} [monitoringFn=null]
  *        Optional function to receive real-time monitoring information.
  *        Expected signature/arguments structure is: onMonitoringInfo
- *        ({type:"info|warn|error", message:"<any>"[, data : {}]});
+ *        ({type:"info|warn|error|debug", message:"<any>"[, data : {}]});
  * @return {String} A formatted help string.
  */
 function getHelp(dictionary, monitoringFn = null) {

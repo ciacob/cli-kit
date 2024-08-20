@@ -65,7 +65,7 @@ const fs = require("fs");
  * @param   {Function} [monitoringFn=null]
  *          A function to receive real-time monitoring information. Expected
  *          signature/arguments structure is: onMonitoringInfo
- *          ({type:"info|warn|error", message:"<any>"[, data : {}]});
+ *          ({type:"info|warn|error|debug", message:"<any>"[, data : {}]});
  *
  * @return  {Object|null}
  *          The settings of the specified profile as a flat object, or null if no match.

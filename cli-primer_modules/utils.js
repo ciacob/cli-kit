@@ -411,13 +411,14 @@ function populateTemplate(template, data, monitoringFn = null) {
 /**
  * Merges three data sets, giving precedence to the later sets.
  * Performs a shallow merge.
+ * @param {Object} intrinsic - The intrinsic data set.
  * @param {Object} implicit - The implicit data set.
  * @param {Object} explicit - The explicit data set.
  * @param {Object} given - The given data set.
  * @return {Object} - The merged data set.
  */
-function mergeData(implicit, explicit, given) {
-  return { ...implicit, ...explicit, ...given };
+function mergeData(intrinsic={}, implicit={}, explicit={}, given={}) {
+  return { ...intrinsic, ...implicit, ...explicit, ...given };
 }
 
 /**

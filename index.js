@@ -15,6 +15,7 @@ const {
   setDebugMode,
   getAppInfo,
   getUserHomeDirectory,
+  getDefaultBanner,
 } = require("./cli-primer_modules/utils");
 const { getArguments, getHelp } = require("./cli-primer_modules/argTools");
 const {
@@ -27,201 +28,331 @@ const {
   closeSession,
 } = require("./cli-primer_modules/session");
 
+/**
+ * Convenience entry point to set up cli-primer, wrap it around your main application logic, and
+ * execute it, in one go. 
+ * 
+ * NOTE: if you use `wrapAndRun` you can still access any of the individual utils functions defined
+ * in the other modules, as needed. This function does not rule them out, and is here just for your
+ * convenience. You can choose not to use `wrapAndRun` at all, and instead employ cli-primer tools
+ * in your own style.
+ * 
+ * @param   {Object} setupData
+ *          An Object that helps tailoring the `cli-primer` package utilities to your application
+ *          needs. Expected structure is:
+ *            {
+ *              // Whether to include "debug" messages in console output; applies to default
+ *              // monitoring function only.
+ *              showDebugMessages: false,
+ * 
+ *              // Whether you need support for an `output directory`, useful if your application
+ *              // is meant to produce local content to be stored on disk.
+ *              useOutputDir: false,
+ * 
+ *              // Whether to employ the basic session control cli-primer provides; useful if your
+ *              // app involves lengthy operations that would suffer from execution overlapping.
+ *              useSessionControl: false,
+ * 
+ *              // Whether to employ the configuration file system provided by cli-primer. This is
+ *              // a home directory based config file with support for profiles and data validation.
+ *              useConfig: false,
+ * 
+ *              // Whether to employ the `--help` argument the cli-primer provides. Giving that at
+ *              // app run will display info about all available arguments and exit early.
+ *              useHelp: false,
+ * 
+ *              // Array ob Object, with each Object describing a known command line argument. See
+ *              // documentation of function `getArguments` in module `utils.js` for details.
+ *              argsDictionary: [],
+ * 
+ *              // Key-value pairs to act as absolute defaults for any of the known arguments. These
+ *              // defaults apply when neither config file nor command line provide any overrides.
+ *              intrinsicDefaults: {},
+ * 
+ *              // A template to use when `useConfig` is `true`. Must be valid JSON, and will be 
+ *              // injected with a `profiles` section for you. You can use placeholders, e.g.,
+ *              // "{{name}}" would resolve to the app name, as defined in the `package.json`.
+ *              // See `getAppInfo` in `utils.js` for available app placeholders and `initializeConfig`
+ *              // in `configTools.js` for default configuration file details.
+ *              configTemplate: "",
+ * 
+ *              // Object describing an initial files and folders structure to be created for you in
+ *              // the output directory, used if `useOutputDir` is true. See `ensureSetup` in `utils.js`
+ *              // for the exact format.
+ *              outputDirBlueprint: {},
+ *            }
+ *
+ *
+ * @param   {Function} mainFn
+ *          Mandatory; a function that executes your application code, i.e., the main entry point
+ *          into your logic. It must have the signature:
+ *            `Number myMainFn (inputData, utils, monitoringFn)`
+ *
+ *          where `inputData` is an Object with all input gathered via configuration file and/or
+ *          command line arguments, and `utils` is an Object providing convenient access to all
+ *          utility functions defined by the cli-primer package. As for `monitoringFn`, it receives
+ *          the monitoring function in use, either the default one, or provided by you via
+ *          `userMonitoringFn` (see next).
+ *
+ *          You are expected to return a Number out of your `mainFn`: `0` for normal exit,  `1` for
+ *          early, expected exit, and `2` for early, unexpected exit (aka, an error occurred). This
+ *          value will be picked-up and returned by `wrapAndRun`, for you to use.
+ *
+ *          Note that your `mainFn` can also return a Promise that resolves to these numbers, this is
+ *          supported as well.
+ *
+ * @param   {Function} cleanupFn
+ *          Optional; a function to be called when application is about to exit as a result of
+ *          SIGINT or SIGTERM. It must have the signature:
+ *            `onCleanup (inputData, utils, monitoringFn)`
+ *
+ *          where `inputData` is an Object with all input gathered via configuration file and/or
+ *          command line arguments, and `utils` is an Object providing convenient access to all
+ *          utility functions defined by the cli-primer package. As for `monitoringFn`, it receives
+ *          the monitoring function in use, either the default one, or provided by you via
+ *          `userMonitoringFn` (see next).
+ *
+ * @param   {Function} userMonitoringFn
+ *          Optional function to receive real-time monitoring information. If not provided, the
+ *          `monitoringFn` function defined in the `utils.js` module will be used. For details,
+ *          see its own documentation there.
+ *
+ * @returns {Promise<Number>} Returns a Promise that resolves to `0` if program completed normally,
+ *          `1` for expected early exits (e.g., the `--help` argument was given), or `2` if program
+ *          exited because of an error. You can use this value in your code, e.g., to pass it to
+ *          `process.exit`.
+ */
 async function wrapAndRun(
   setupData = {},
   mainFn,
   cleanupFn = null,
   userMonitoringFn = null
 ) {
-  const defaults = {
-    showDebugMessages: false,
-    useOutputDir: false,
-    useSessionControl: false,
-    useConfig: false,
-    useHelp: false,
-    argsDictionary: [],
-    intrinsicDefaults: {},
-    configTemplate: "",
-    outputDirBlueprint: {},
-  };
+  return new Promise(async (resolve, reject) => {
+    const defaults = {
+      showDebugMessages: false,
+      useOutputDir: false,
+      useSessionControl: false,
+      useConfig: false,
+      useHelp: false,
+      argsDictionary: [],
+      intrinsicDefaults: {},
+      configTemplate: "",
+      outputDirBlueprint: {},
+    };
 
-  // Merge defaultSetupData with user-provided setupData
-  const finalSetupData = deepMergeData(defaults, setupData);
+    // Merge defaultSetupData with user-provided setupData
+    const finalSetupData = deepMergeData(defaults, setupData);
 
-  // Setup monitoring function
-  const $m = userMonitoringFn || monitoringFn;
-  setDebugMode(finalSetupData.showDebugMessages);
+    // Setup monitoring function
+    const $m = userMonitoringFn || monitoringFn;
+    setDebugMode(finalSetupData.showDebugMessages);
 
-  // Prepare arguments dictionary
-  const argsDictionary = [...finalSetupData.argsDictionary];
+    // Prepare arguments dictionary
+    const argsDictionary = [...finalSetupData.argsDictionary];
 
-  if (finalSetupData.useHelp) {
-    argsDictionary.push({
-      name: "Help",
-      payload: /^--(help|h)$/,
-      doc: "Displays information about the program's input parameters and exits.",
-      mandatory: false,
-    });
-  }
-
-  if (finalSetupData.useConfig) {
-    argsDictionary.push(
-      {
-        name: "Configuration File Initialization",
-        payload: /^--(init_config|ic)$/,
-        doc: "Initializes an empty configuration file in the user's home directory and exits.",
+    if (finalSetupData.useHelp) {
+      argsDictionary.push({
+        name: "Help",
+        payload: /^--(help|h)$/,
+        doc: "Displays information about the program's input parameters and exits.",
         mandatory: false,
-      },
-      {
-        name: "Configuration Profile Selection",
-        payload: /^--(config_profile|cp)=(.+)$/,
-        doc: "Loads default data from a configuration profile if it has been defined.",
-        mandatory: false,
-      }
-    );
-  }
+      });
+    }
 
-  if (finalSetupData.useOutputDir) {
-    argsDictionary.push({
-      name: "Output directory",
-      payload: /^--(output_dir|od)=(.+)$/,
-      doc: "The working directory for the program. All content produced by the program will be placed in this directory. It must be an absolute and valid path to an already existing folder.",
-      mandatory: true,
-    });
-  }
+    if (finalSetupData.useConfig) {
+      argsDictionary.push(
+        {
+          name: "Configuration File Initialization",
+          payload: /^--(init_config|ic)$/,
+          doc: "Initializes an empty configuration file in the user's home directory and exits.",
+          mandatory: false,
+        },
+        {
+          name: "Configuration Profile Selection",
+          payload: /^--(config_profile|cp)=(.+)$/,
+          doc: "Loads default data from a configuration profile if it has been defined.",
+          mandatory: false,
+        }
+      );
+    }
 
-  // 1. Parse command-line arguments
-  const cmdArgs = getArguments(argsDictionary, null, $m);
-  if (!cmdArgs) {
-    return;
-  }
+    if (finalSetupData.useOutputDir) {
+      argsDictionary.push({
+        name: "Output directory",
+        payload: /^--(output_dir|od)=(.+)$/,
+        doc: "The working directory for the program. All content produced by the program will be placed in this directory. It must be an absolute and valid path to an already existing folder.",
+        mandatory: true,
+      });
+    }
 
-  // 2. Handle --help
-  if (finalSetupData.useHelp && cmdArgs.help) {
-    console.log(getHelp(argsDictionary, $m));
-    return;
-  }
-
-  // 3. Handle --init_config
-  if (finalSetupData.useConfig && cmdArgs.init_config) {
+    // 1. Parse command-line arguments
     const appInfo = getAppInfo($m);
+    const cmdArgs = getArguments(argsDictionary, null, $m);
+    if (!cmdArgs) {
+      $m({
+        type: "error",
+        message: `Failed reading program arguments. Run "${appInfo.name} --h" for documentation.`,
+      });
+      resolve(2); // Error exit
+      return;
+    }
+
+    // 2. Handle --help
+    if (finalSetupData.useHelp && cmdArgs.help) {
+      console.log(
+        `${getDefaultBanner(appInfo)}\n${getHelp(argsDictionary, $m)}`
+      );
+      return;
+    }
+
+    // 3. Handle --init_config
     const configFilePath = path.join(
       getUserHomeDirectory(),
       `${appInfo.appPathName}.config`
     );
-    initializeConfig(
-      configFilePath,
-      finalSetupData.configTemplate,
-      appInfo,
-      $m
-    );
-    return;
-  }
-
-  // 4. Load default profile
-  const defaultProfileData = finalSetupData.useConfig
-    ? getConfigData(
-        path.join(getUserHomeDirectory(), `${getAppInfo().appPathName}.config`),
-        "default",
-        argsDictionary,
+    if (finalSetupData.useConfig && cmdArgs.init_config) {
+      initializeConfig(
+        configFilePath,
+        finalSetupData.configTemplate,
+        appInfo,
         $m
-      )
-    : {};
+      );
+      $m({
+        type: "debug",
+        message: `Configuration file initialized at ${configFilePath}`,
+      });
+      resolve(1); // Early exit for config initialization
+      return;
+    }
 
-  // 5. Load specified profile if any
-  const specifiedProfileData =
-    finalSetupData.useConfig && cmdArgs.config_profile
-      ? getConfigData(
-          path.join(
-            getUserHomeDirectory(),
-            `${getAppInfo().appPathName}.config`
-          ),
-          cmdArgs.config_profile,
-          argsDictionary,
-          $m
-        )
+    // 4. Load default profile
+    const defaultProfileData = finalSetupData.useConfig
+      ? getConfigData(configFilePath, "default", argsDictionary, $m)
       : {};
 
-  // 6. Merge all data sources
-  const mergedData = mergeData(
-    finalSetupData.intrinsicDefaults,
-    defaultProfileData,
-    specifiedProfileData,
-    cmdArgs
-  );
+    // 5. Load specified profile if any
+    const specifiedProfileData =
+      finalSetupData.useConfig && cmdArgs.config_profile
+        ? getConfigData(
+            configFilePath,
+            cmdArgs.config_profile,
+            argsDictionary,
+            $m
+          )
+        : {};
 
-  // 7. Validate mandatory arguments
-  for (const { payload, mandatory } of argsDictionary) {
-    if (mandatory && !mergedData[payload.replace(/^--/, "").split("=")[0]]) {
+    // 6. Merge all data sources
+    const mergedData = mergeData(
+      finalSetupData.intrinsicDefaults,
+      defaultProfileData,
+      specifiedProfileData,
+      cmdArgs
+    );
+
+    // 7. Validate mandatory arguments
+    for (const { payload, mandatory } of argsDictionary) {
+      if (mandatory) {
+        const argName = payload.source.match(/\(([^)]+)\)/)[1].split("|")[0];
+        if (!mergedData[argName]) {
+          $m({
+            type: "error",
+            message: `Mandatory argument "${argName}" is missing.`,
+          });
+          resolve(2);
+          return;
+        }
+      }
+    }
+
+    // 8. Ensure the output directory is given and valid
+    if (finalSetupData.useOutputDir) {
+      const outputDir = mergedData.output_dir;
+      if (
+        !outputDir ||
+        !fs.existsSync(outputDir) ||
+        !fs.lstatSync(outputDir).isDirectory()
+      ) {
+        $m({
+          type: "error",
+          message: "Output directory is either not provided or invalid.",
+        });
+        resolve(2);
+        return;
+      }
+    }
+
+    // 9. Check for session control
+    if (finalSetupData.useOutputDir && finalSetupData.useSessionControl) {
+      const outputDir = mergedData.output_dir;
+      if (!canOpenSession(outputDir)) {
+        $m({
+          type: "error",
+          message: `Session is already active for the directory: ${outputDir}`,
+        });
+        resolve(2);
+        return;
+      }
+      openSession(outputDir);
+    }
+
+    // 10. Ensure the output directory structure
+    if (finalSetupData.useOutputDir) {
+      ensureSetup(mergedData.output_dir, finalSetupData.outputDirBlueprint, $m);
+    }
+
+    // 11. Execute the main business logic
+    let mainExitVal = 0;
+    try {
+      mainExitVal = await mainFn(mergedData, allUtils, $m);
+    } catch (error) {
       $m({
         type: "error",
-        message: `Mandatory argument "${payload}" is missing.`,
+        message: `Error in main function execution: ${error.message}`,
+        data: { error },
       });
-      return;
+      mainExitVal = 2;
+    } finally {
+      if (finalSetupData.useOutputDir && finalSetupData.useSessionControl) {
+        closeSession(mergedData.output_dir);
+      }
+      resolve(mainExitVal);
     }
-  }
 
-  // 8. Ensure the output directory is given and valid
-  if (finalSetupData.useOutputDir) {
-    const outputDir = mergedData.output_dir || mergedData.od;
-    if (
-      !outputDir ||
-      !fs.existsSync(outputDir) ||
-      !fs.lstatSync(outputDir).isDirectory()
-    ) {
-      $m({
-        type: "error",
-        message: "Output directory is either not provided or invalid.",
+    // 12. HANDLE CLEANUP ON EXIT
+    // Define generic listener.
+    const onExit = (signalType, inputData, utils, monitoringFn) => {
+      monitoringFn({
+        type: "debug",
+        message: `Exiting by signal ${signalType}.`,
       });
-      return;
-    }
-  }
 
-  // 9. Check for session control
-  if (finalSetupData.useSessionControl) {
-    const outputDir = mergedData.output_dir || mergedData.od;
-    if (!canOpenSession(outputDir)) {
-      $m({
-        type: "error",
-        message: `Session is already active for the directory: ${outputDir}`,
-      });
-      return;
-    }
-    openSession(outputDir);
-  }
+      if (finalSetupData.useOutputDir && finalSetupData.useSessionControl) {
+        monitoringFn({
+          type: "debug",
+          message: `Session control is employed. Cleaning up before exit.`,
+        });
+        closeSession(inputData.output_dir);
+      }
+      if (cleanupFn) {
+        cleanupFn(inputData, utils, monitoringFn);
+      }
+    };
 
-  // 10. Ensure the output directory structure
-  if (finalSetupData.useOutputDir) {
-    const outputDir = mergedData.output_dir || mergedData.od;
-    ensureSetup(outputDir, finalSetupData.outputDirBlueprint, $m);
-  }
+    // Factory to build a closure out of the generic listener
+    function createExitHandler(signalType, context, monitoringFn) {
+      return () => onExit(signalType, context, monitoringFn);
+    }
 
-  // 11. Execute the main business logic
-  try {
-    await mainFn(mergedData, allUtils, $m);
-  } catch (error) {
-    $m({
-      type: "error",
-      message: `Error in main function execution: ${error.message}`,
-      data: { error },
-    });
-  } finally {
-    if (finalSetupData.useSessionControl) {
-      closeSession(mergedData.output_dir || mergedData.od);
-    }
-  }
+    // Hook up listeners.
+    process.on("SIGINT", createExitHandler("SIGINT", mergedData, allUtils, $m));
+    process.on(
+      "SIGTERM",
+      createExitHandler("SIGTERM", mergedData, allUtils, $m)
+    );
 
-  // Handle cleanup on exit
-  const onExit = () => {
-    if (finalSetupData.useSessionControl) {
-      closeSession(mergedData.output_dir || mergedData.od);
-    }
-    if (cleanupFn) {
-      cleanupFn();
-    }
-  };
-  process.on("SIGINT", onExit);
-  process.on("SIGTERM", onExit);
+    // ...Promise function ends here.
+  });
 }
 
 // Re-exporting all the functions for convenient, individual access, if needed.

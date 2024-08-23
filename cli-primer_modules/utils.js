@@ -248,7 +248,8 @@ function ensureSetup(homeDir, bluePrint, monitoringFn = null) {
   if (!bluePrint || !bluePrint.content) {
     $m({
       type: "debug",
-      message: `Skipping invalid "bluePrint" argument received by "ensureSetup":\n${bluePrint}`,
+      message: `Skipping invalid "bluePrint" argument received by "ensureSetup":`,
+      data: bluePrint
     });
   } else {
     try {

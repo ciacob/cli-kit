@@ -121,10 +121,24 @@ const {
  *          `monitoringFn` function defined in the `utils.js` module will be used. For details,
  *          see its own documentation there.
  *
- * @returns {Promise<Number>} Returns a Promise that resolves to `0` if program completed normally,
- *          `1` for expected early exits (e.g., the `--help` argument was given), or `2` if program
- *          exited because of an error. You can use this value in your code, e.g., to pass it to
- *          `process.exit`.
+ * @returns {Promise<Number>} Returns a Promise that resolves to:
+ *          - `0`: To suggest that the program completed normally.
+ *          - `1`: To suggest that the program had an expected early exit (e.g., the `--help` 
+ *                 argument was given, which printed documentation and halted execution).
+ *          - `2`: To suggest the program exited due to an error.
+ *      
+ *          NOTES:
+ *          1. If no errors prevent `cli-primer` from running the `mainFn` you provide, then the
+ *             Promise will resolve to whatever value your `mainFn` returns. You can follow the same
+ *             convention, or you can devise your own.
+ *          2. `cli-primer` itself does not call `process.exit`, but it is probably a good idea that
+ *             you call it, passing it the return value of `wrapAndRun`, as these (0, 1, 2) are some
+ *             pretty common exit values, and you will gain interoperability by doing so (you will be
+ *             able to run your application from, e.g., bash scripts, which will know for sure whether
+ *             your application terminated normally or not). `cli-primer` does not call `process.exit`
+ *             itself to give you flexibility. For example, if you intend to keep a service running in
+ *             your application, you could return a different value (e.g., `3`) from your `mainFn` and
+ *             handle that case separately in your code (e.g., choose NOT to call `process.exit()`).
  */
 async function wrapAndRun(
   setupData = {},

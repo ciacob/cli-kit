@@ -245,47 +245,53 @@ function getDefaultBanner(appInfo) {
 function ensureSetup(homeDir, bluePrint, monitoringFn = null) {
   const $m = monitoringFn || function () {};
   const createdPaths = [];
+  if (!bluePrint || !bluePrint.content) {
+    $m({
+      type: "debug",
+      message: `Skipping invalid "bluePrint" argument received by "ensureSetup":\n${bluePrint}`,
+    });
+  } else {
+    try {
+      // Sort content by path alphabetically
+      bluePrint.content.sort((a, b) => a.path.localeCompare(b.path));
 
-  try {
-    // Sort content by path alphabetically
-    bluePrint.content.sort((a, b) => a.path.localeCompare(b.path));
+      // Ensure all directories and files exist
+      for (const item of bluePrint.content) {
+        const itemPath = path.join(homeDir, item.path);
 
-    // Ensure all directories and files exist
-    for (const item of bluePrint.content) {
-      const itemPath = path.join(homeDir, item.path);
+        if (item.type === "folder") {
+          // Create folder if it doesn't exist
+          if (!fs.existsSync(itemPath)) {
+            fs.mkdirSync(itemPath, { recursive: true });
+            $m({ type: "info", message: `Created folder: ${itemPath}` });
+            createdPaths.push(itemPath);
+          }
+        } else if (item.type === "file") {
+          // Ensure the parent directory exists
+          const dir = path.dirname(itemPath);
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+            $m({
+              type: "info",
+              message: `Created parent directory for file: ${dir}`,
+            });
+            createdPaths.push(dir);
+          }
 
-      if (item.type === "folder") {
-        // Create folder if it doesn't exist
-        if (!fs.existsSync(itemPath)) {
-          fs.mkdirSync(itemPath, { recursive: true });
-          $m({ type: "info", message: `Created folder: ${itemPath}` });
+          // Create and populate the file based on the template and data
+          const content = populateTemplate(item.template, item.data);
+          fs.writeFileSync(itemPath, content, "utf8");
+          $m({ type: "info", message: `Created file: ${itemPath}` });
           createdPaths.push(itemPath);
         }
-      } else if (item.type === "file") {
-        // Ensure the parent directory exists
-        const dir = path.dirname(itemPath);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-          $m({
-            type: "info",
-            message: `Created parent directory for file: ${dir}`,
-          });
-          createdPaths.push(dir);
-        }
-
-        // Create and populate the file based on the template and data
-        const content = populateTemplate(item.template, item.data);
-        fs.writeFileSync(itemPath, content, "utf8");
-        $m({ type: "info", message: `Created file: ${itemPath}` });
-        createdPaths.push(itemPath);
       }
+    } catch (error) {
+      $m({
+        type: "error",
+        message: `Error in ensureSetup. Details: ${error.message}`,
+        data: { error },
+      });
     }
-  } catch (error) {
-    $m({
-      type: "error",
-      message: `Error in ensureSetup. Details: ${error.message}`,
-      data: { error },
-    });
   }
   createdPaths.sort();
   return createdPaths;
@@ -417,7 +423,7 @@ function populateTemplate(template, data, monitoringFn = null) {
  * @param {Object} given - The given data set.
  * @return {Object} - The merged data set.
  */
-function mergeData(intrinsic={}, implicit={}, explicit={}, given={}) {
+function mergeData(intrinsic = {}, implicit = {}, explicit = {}, given = {}) {
   return { ...intrinsic, ...implicit, ...explicit, ...given };
 }
 

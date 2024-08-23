@@ -1,5 +1,6 @@
 // index.js
 const path = require("path");
+const fs = require("fs");
 
 // This is for re-exporting
 const allUtils = {
@@ -18,6 +19,7 @@ const {
   getAppInfo,
   getUserHomeDirectory,
   getDefaultBanner,
+  ensureSetup,
 } = require("./cli-primer_modules/utils");
 const { getArguments, getHelp } = require("./cli-primer_modules/argTools");
 const {
@@ -32,13 +34,13 @@ const {
 
 /**
  * Convenience entry point to set up cli-primer, wrap it around your main application logic, and
- * execute it, in one go. 
- * 
+ * execute it, in one go.
+ *
  * NOTE: if you use `wrapAndRun` you can still access any of the individual utils functions defined
  * in the other modules, as needed. This function does not rule them out, and is here just for your
  * convenience. You can choose not to use `wrapAndRun` at all, and instead employ cli-primer tools
  * in your own style.
- * 
+ *
  * @param   {Object} setupData
  *          An Object that helps tailoring the `cli-primer` package utilities to your application
  *          needs. Expected structure is:
@@ -46,38 +48,38 @@ const {
  *              // Whether to include "debug" messages in console output; applies to default
  *              // monitoring function only.
  *              showDebugMessages: false,
- * 
+ *
  *              // Whether you need support for an `output directory`, useful if your application
  *              // is meant to produce local content to be stored on disk.
  *              useOutputDir: false,
- * 
+ *
  *              // Whether to employ the basic session control cli-primer provides; useful if your
  *              // app involves lengthy operations that would suffer from execution overlapping.
  *              useSessionControl: false,
- * 
+ *
  *              // Whether to employ the configuration file system provided by cli-primer. This is
  *              // a home directory based config file with support for profiles and data validation.
  *              useConfig: false,
- * 
+ *
  *              // Whether to employ the `--help` argument the cli-primer provides. Giving that at
  *              // app run will display info about all available arguments and exit early.
  *              useHelp: false,
- * 
+ *
  *              // Array ob Object, with each Object describing a known command line argument. See
  *              // documentation of function `getArguments` in module `utils.js` for details.
  *              argsDictionary: [],
- * 
+ *
  *              // Key-value pairs to act as absolute defaults for any of the known arguments. These
  *              // defaults apply when neither config file nor command line provide any overrides.
  *              intrinsicDefaults: {},
- * 
- *              // A template to use when `useConfig` is `true`. Must be valid JSON, and will be 
+ *
+ *              // A template to use when `useConfig` is `true`. Must be valid JSON, and will be
  *              // injected with a `profiles` section for you. You can use placeholders, e.g.,
  *              // "{{name}}" would resolve to the app name, as defined in the `package.json`.
  *              // See `getAppInfo` in `utils.js` for available app placeholders and `initializeConfig`
  *              // in `configTools.js` for default configuration file details.
  *              configTemplate: "",
- * 
+ *
  *              // Object describing an initial files and folders structure to be created for you in
  *              // the output directory, used if `useOutputDir` is true. See `ensureSetup` in `utils.js`
  *              // for the exact format.
@@ -277,7 +279,7 @@ async function wrapAndRun(
       ) {
         $m({
           type: "error",
-          message: "Output directory is either not provided or invalid.",
+          message: `Provided output directory "${outputDir}" is invalid.`,
         });
         resolve(2);
         return;

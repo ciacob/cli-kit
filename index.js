@@ -108,13 +108,17 @@ const {
  * @param   {Function} cleanupFn
  *          Optional; a function to be called when application is about to exit as a result of
  *          SIGINT or SIGTERM. It must have the signature:
- *            `onCleanup (inputData, utils, monitoringFn)`
+ *            `Number onCleanup (inputData, utils, monitoringFn)`
  *
  *          where `inputData` is an Object with all input gathered via configuration file and/or
  *          command line arguments, and `utils` is an Object providing convenient access to all
  *          utility functions defined by the cli-primer package. As for `monitoringFn`, it receives
  *          the monitoring function in use, either the default one, or provided by you via
  *          `userMonitoringFn` (see next).
+ *          
+ *          NOTE: you don't need to call `process.exit()` from your `cleanupFn`. `cli-primer` will
+ *          call it for you, passing it the return value of your `cleanupFn`.
+ *          
  *
  * @param   {Function} userMonitoringFn
  *          Optional function to receive real-time monitoring information. If not provided, the
@@ -131,14 +135,15 @@ const {
  *          1. If no errors prevent `cli-primer` from running the `mainFn` you provide, then the
  *             Promise will resolve to whatever value your `mainFn` returns. You can follow the same
  *             convention, or you can devise your own.
- *          2. `cli-primer` itself does not call `process.exit`, but it is probably a good idea that
- *             you call it, passing it the return value of `wrapAndRun`, as these (0, 1, 2) are some
- *             pretty common exit values, and you will gain interoperability by doing so (you will be
- *             able to run your application from, e.g., bash scripts, which will know for sure whether
- *             your application terminated normally or not). `cli-primer` does not call `process.exit`
- *             itself to give you flexibility. For example, if you intend to keep a service running in
- *             your application, you could return a different value (e.g., `3`) from your `mainFn` and
- *             handle that case separately in your code (e.g., choose NOT to call `process.exit()`).
+ *          2. `cli-primer` itself does not call `process.exit` at the end of a normal operation 
+ *             cycle, but it is probably a good idea that you call it, passing it the return value of
+ *             `wrapAndRun`, as these (0, 1, 2) are some pretty common exit values, and you will gain
+ *             interoperability by doing so (you will be able to run your application from, e.g., bash
+ *             scripts, which will know for sure whether your application terminated normally or not).
+ *             `cli-primer` does not call `process.exit` itself to give you flexibility. For example,
+ *             if you intend to keep a service running in your application, you could return a 
+ *             different value (e.g., `3`) from your `mainFn` and handle that case separately in your
+ *             code (e.g., choose NOT to call `process.exit()`).
  */
 async function wrapAndRun(
   setupData = {},
@@ -352,14 +357,17 @@ async function wrapAndRun(
         });
         closeSession(inputData.output_dir);
       }
+
+      let termExitVal = 1;
       if (cleanupFn) {
-        cleanupFn(inputData, utils, monitoringFn);
+        termExitVal = cleanupFn(inputData, utils, monitoringFn);
       }
+      process.exit (termExitVal);
     };
 
     // Factory to build a closure out of the generic listener
-    function createExitHandler(signalType, context, monitoringFn) {
-      return () => onExit(signalType, context, monitoringFn);
+    function createExitHandler(signalType, inputData, utils, monitoringFn) {
+      return () => onExit(signalType, inputData, utils, monitoringFn);
     }
 
     // Hook up listeners.

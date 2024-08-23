@@ -38,7 +38,8 @@ const fs = require("fs");
  *          The name of the profile to extract.
  *
  * @param   {Array} dictionary
- *          Array of objects describing the expected arguments/settings. Each object contains:
+ *          Array of objects describing the expected arguments/settings used to filter out
+ *          unknown arguments that might be passed in the configuration file. Each object contains:
  *          - name: A print-friendly string (not used for parsing).
  *          - payload: A RegExp or string describing the argument pattern.
  *          - doc: Arbitrary documentation as a string.
@@ -57,10 +58,6 @@ const fs = require("fs");
  *              second, if available, must capture the argument value.
  *          (2) If there is only one group, the value of the argument will be `true` (i.e., we
  *              will consider the argument to be a flag).
- *          (3) If a RegExp payload was used to specify both long and abridged names for an
- *              argument, e.g., /^--(version|v)/, only the long form of the argument will be
- *              used to represent the argument within the returned Object, regardless of the
- *              form used when executing the program.
  *
  * @param   {Function} [monitoringFn=null]
  *          A function to receive real-time monitoring information. Expected
@@ -100,6 +97,14 @@ function getConfigData(filePath, profileName, dictionary, monitoringFn = null) {
         if (typeof payload === "string") {
           return payload === `--${key}`;
         } else if (payload instanceof RegExp) {
+          const argNameSrc = payload.source;
+          const argNamesStr = argNameSrc.match(/\(([^\)]+)\)/)[1];
+          if (argNamesStr) {
+            const argNames = argNamesStr.split("|");
+            if (argNames && argNames.length) {
+              return argNames[0] === key || argNames[1] === key;
+            }
+          }
           const match = `--${key}`.match(payload);
           return match && match[1] === key;
         }
@@ -118,24 +123,34 @@ function getConfigData(filePath, profileName, dictionary, monitoringFn = null) {
           message: `Ignoring empty "${key}" of the "${profileName}" profile.`,
         });
         continue; // Skip setting empty strings
-      } else if (
-        matchingArg.payload instanceof RegExp &&
-        matchingArg.payload.source.includes("|")
-      ) {
-        const acceptedValues = matchingArg.payload.source
-          .match(/\(([^)]+)\)/)[1]
-          .split("|");
-        if (!acceptedValues.includes(value)) {
+      } else if (matchingArg.payload instanceof RegExp) {
+        // Build a valid argument declaration and try to match that against its RegExp definition.
+        const generalMatch = `--${key}=${value}`.match(matchingArg.payload);
+        if (!generalMatch) {
+          // On failure to match, and if the expected value is an enumeration, we list the values in our
+          // message, to make it easier for the user.
+          let enumListing = "";
+          const matchingArgSrc = matchingArg.payload.source;
+          const secondGroupMatch = matchingArgSrc.match(
+            /\(([^)]+)\)=\(([^)]+)\)/
+          )[2];
+          if (
+            secondGroupMatch &&
+            secondGroupMatch[2] &&
+            secondGroupMatch[2].includes("|")
+          ) {
+            const acceptedValues = secondGroupMatch[2].split("|");
+            if (acceptedValues && acceptedValues.length) {
+              enumListing = `Expected one of: ${acceptedValues.join(", ")}. `;
+            }
+          }
           $m({
             type: "warn",
-            message: `Invalid value for "${key}" in profile "${profileName}". Expected one of: ${acceptedValues.join(
-              ", "
-            )}. Received: "${value}".`,
+            message: `Invalid value for "${key}" in profile "${profileName}". ${enumListing}Received: "${value}".`,
           });
           continue; // Skip setting invalid enumerated values
         }
       }
-
       result[key] = value; // Only set valid and non-empty values
     }
 
@@ -152,11 +167,11 @@ function getConfigData(filePath, profileName, dictionary, monitoringFn = null) {
 }
 
 /**
- * Creates a configuration file at a given path, validating the provided template, 
- * and populating it with data where necessary. If the provided template is invalid, 
+ * Creates a configuration file at a given path, validating the provided template,
+ * and populating it with data where necessary. If the provided template is invalid,
  * empty, or does not meet the minimum required structure, a default configuration
  * structure is used.
- * 
+ *
  * NOTE: this function never throws. If any file system operations fail, the error
  * will be caught and logged through the given `monitoringFn`, if any.
  *
@@ -164,18 +179,18 @@ function getConfigData(filePath, profileName, dictionary, monitoringFn = null) {
  *          The absolute path of the configuration file to create.
  *
  * @param   {String} template
- *          A JSON string representing the template for the configuration file. 
- *          This string can include placeholders in the format {{myVarName}}. 
- *          If the template is not valid JSON, or if it lacks the necessary structure, 
+ *          A JSON string representing the template for the configuration file.
+ *          This string can include placeholders in the format {{myVarName}}.
+ *          If the template is not valid JSON, or if it lacks the necessary structure,
  *          a default configuration structure will be used instead.
  *
  * @param   {Object} templateData
- *          An object containing data to replace the placeholders within the template. 
- *          For example: { myVarName: "Hello world!" }. All matching placeholders 
+ *          An object containing data to replace the placeholders within the template.
+ *          For example: { myVarName: "Hello world!" }. All matching placeholders
  *          will be replaced with the corresponding values from this object.
  *
  * @param   {Function} [monitoringFn=null]
- *          An optional function to receive real-time monitoring information. 
+ *          An optional function to receive real-time monitoring information.
  *          The function should expect an object with the structure:
  *          onMonitoringInfo({type: "info|warn|error", message: "<any>"[, data: {}]}).
  */

@@ -188,6 +188,16 @@ function initializeConfig(
 ) {
   const $m = monitoringFn || function () {};
 
+  // If the configuration file already exists, exit with an error, to prevent accidental
+  // loss of configuration data.
+  if (fs.existsSync(filePath)) {
+    $m({
+      type: "warn",
+      message: `Configuration file "${filePath}" already exists, nothing to do.`,
+    });
+    return;
+  }
+
   // Default structure for a valid configuration file
   const defaultConfigStructure = {
     profiles: [

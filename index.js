@@ -1,4 +1,6 @@
 // index.js
+const path = require("path");
+
 // This is for re-exporting
 const allUtils = {
   ...require("./cli-primer_modules/argTools"),

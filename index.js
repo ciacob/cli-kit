@@ -66,7 +66,7 @@ const {
  *              useHelp: false,
  *
  *              // Array ob Object, with each Object describing a known command line argument. See
- *              // documentation of function `getArguments` in module `utils.js` for details.
+ *              // documentation of function `getArguments` in module `argTools.js` for details.
  *              argsDictionary: [],
  *
  *              // Key-value pairs to act as absolute defaults for any of the known arguments. These

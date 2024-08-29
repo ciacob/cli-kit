@@ -203,7 +203,7 @@ See the documentation of `wrapAndRun` in `index.js` for more details. Also you s
 #### 2.3. The `cleanupFn`
 This is an optional third argument that you can pass to `wrapAndRun`. If provided, it will receive the same parameters as `mainFn`. The `cleanupFn` will be invoked when your application is terminated via `CTRL+^` or similar. See the documentation of `wrapAndRun` in `index.js` for more details.
 
-#### 2.4. The return value the `mainFn`
+#### 2.4. The return value of the `mainFn`
 The function `wrapAndRun` returns a numerical value. If any error occurs before `wrapAndRun` gets to your provided `mainFn`, that number will be `2`, to signal an error. If your application makes use of built-in _early exit_ arguments, such as `--help` (which prints generated documentation to the console and exits), then the exit number will be `1`, to signal an expected early exit. Otherwise, if your `mainFn` gets to be called, the number returned will be whatever number your `mainFn` returns.
 
 Recall that in our first code example, the returned value of `wrapAndRun` was intelligently passed to `process.exit`:

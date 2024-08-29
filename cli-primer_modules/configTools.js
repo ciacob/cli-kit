@@ -88,10 +88,8 @@ function getConfigData(filePath, profileName, dictionary, monitoringFn = null) {
       });
       return null;
     }
-
     const settings = profile.settings || {};
     const result = {};
-
     for (const [key, value] of Object.entries(settings)) {
       const matchingArg = dictionary.find(({ payload }) => {
         if (typeof payload === "string") {
@@ -116,13 +114,13 @@ function getConfigData(filePath, profileName, dictionary, monitoringFn = null) {
           type: "warn",
           message: `Ignoring unknown setting "${key}" in profile "${profileName}".`,
         });
-        continue; // Skip setting unknown keys
+        continue; // Do not set unknown keys.
       } else if (typeof value === "string" && value.trim() === "") {
         $m({
           type: "debug",
           message: `Ignoring empty "${key}" of the "${profileName}" profile.`,
         });
-        continue; // Skip setting empty strings
+        continue; // Do not set empty strings.
       } else if (matchingArg.payload instanceof RegExp) {
         // Build a valid argument declaration and try to match that against its RegExp definition.
         const generalMatch = `--${key}=${value}`.match(matchingArg.payload);
@@ -134,12 +132,8 @@ function getConfigData(filePath, profileName, dictionary, monitoringFn = null) {
           const secondGroupMatch = matchingArgSrc.match(
             /\(([^)]+)\)=\(([^)]+)\)/
           )[2];
-          if (
-            secondGroupMatch &&
-            secondGroupMatch[2] &&
-            secondGroupMatch[2].includes("|")
-          ) {
-            const acceptedValues = secondGroupMatch[2].split("|");
+          if (secondGroupMatch && secondGroupMatch.includes("|")) {
+            const acceptedValues = secondGroupMatch.split("|");
             if (acceptedValues && acceptedValues.length) {
               enumListing = `Expected one of: ${acceptedValues.join(", ")}. `;
             }

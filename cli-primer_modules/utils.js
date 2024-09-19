@@ -101,6 +101,28 @@ function generatePathSafeName(name) {
 }
 
 /**
+ * Recursively traverses upwards from a given directory to find the nearest
+ * `package.json` file. Starts searching from the directory of the currently
+ * running script and climbs towards its root.
+ *
+ * @returns {string}
+ *          The absolute path to the `package.json` file, if found, or null
+ *          otherwise.
+ */
+function findPackageJson() {
+  let currentDir = path.dirname(require.main.filename);
+  const root = path.parse(currentDir).root;
+  while (currentDir !== root) {
+    const packageJsonPath = path.join(currentDir, "package.json");
+    if (fs.existsSync(packageJsonPath)) {
+      return packageJsonPath;
+    }
+    currentDir = path.dirname(currentDir);
+  }
+  return null;
+}
+
+/**
  * Reads the `package.json` file of the current Node.js application and returns an object
  * containing basic application information.
  *
@@ -122,8 +144,7 @@ function generatePathSafeName(name) {
  */
 function getAppInfo(monitoringFn = null) {
   const $m = monitoringFn || function () {};
-
-  const packageJsonPath = path.resolve(process.cwd(), "package.json");
+  const packageJsonPath = findPackageJson();
   let appInfo = {
     name: `App ${generateUniqueId()}`,
   };
@@ -147,26 +168,25 @@ function getAppInfo(monitoringFn = null) {
 
       $m({
         type: "debug",
-        message: `Successfully read package.json from path: ${packageJsonPath}`,
+        message: `Successfully read "package.json" from path: ${packageJsonPath}`,
         data: appInfo,
       });
     } else {
       $m({
         type: "warn",
-        message: `package.json not found at path: ${packageJsonPath}`,
+        message: `"package.json" not found at path: ${packageJsonPath}`,
       });
     }
   } catch (error) {
     $m({
       type: "warn",
-      message: `Failed to read package.json. Details: ${error.message}`,
+      message: `Failed to read "package.json". Details: ${error.message}`,
       data: { error },
     });
   }
 
   // Generate appPathName based on the name
   appInfo.appPathName = generatePathSafeName(appInfo.name);
-
   return appInfo;
 }
 
@@ -249,7 +269,7 @@ function ensureSetup(homeDir, bluePrint, monitoringFn = null) {
     $m({
       type: "debug",
       message: `Skipping invalid "bluePrint" argument received by "ensureSetup":`,
-      data: bluePrint
+      data: bluePrint,
     });
   } else {
     try {
